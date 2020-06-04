@@ -36,5 +36,3 @@ class FSRCNN(nn.Module):
         x = self.mid_part(x)
         x = self.last_part(x)
         return x
-
-

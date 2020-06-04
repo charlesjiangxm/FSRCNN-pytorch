@@ -11,15 +11,20 @@ from utils import convert_ycbcr_to_rgb, preprocess, calc_psnr
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights-file', type=str, required=True)
-    parser.add_argument('--image-file', type=str, required=True)
-    parser.add_argument('--scale', type=int, default=3)
+    parser.add_argument('--weights-file', type=str, required=False)
+    parser.add_argument('--image-file', type=str, required=False)
+    parser.add_argument('--scale', type=int, default=2)
     args = parser.parse_args()
+
+    args.weights_file = "models/fsrcnn_x2.pth"
+    args.image_file = "data/butterfly_GT.bmp"
+    args.scale = 2
 
     cudnn.benchmark = True
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     model = FSRCNN(scale_factor=args.scale).to(device)
+    print(model)
 
     state_dict = model.state_dict()
     for n, p in torch.load(args.weights_file, map_location=lambda storage, loc: storage).items():
