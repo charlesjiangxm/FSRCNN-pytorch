@@ -8,7 +8,6 @@ import PIL.Image as pil_image
 from models import FSRCNN
 from utils import convert_ycbcr_to_rgb, preprocess, calc_psnr
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights-file', type=str, required=False)
@@ -16,8 +15,8 @@ if __name__ == '__main__':
     parser.add_argument('--scale', type=int, default=2)
     args = parser.parse_args()
 
-    args.weights_file = "models/fsrcnn_x2.pth"
-    args.image_file = "data/butterfly_GT.bmp"
+    args.weights_file = "models/fsrcnn_FHD2UHD.pth"
+    args.image_file = "data/butterfly_FHD.bmp"
     args.scale = 2
 
     cudnn.benchmark = True
@@ -26,6 +25,8 @@ if __name__ == '__main__':
     model = FSRCNN(scale_factor=args.scale).to(device)
     print(model)
 
+    # save or load model
+    # torch.save(model.state_dict(), args.weights_file)
     state_dict = model.state_dict()
     for n, p in torch.load(args.weights_file, map_location=lambda storage, loc: storage).items():
         if n in state_dict.keys():

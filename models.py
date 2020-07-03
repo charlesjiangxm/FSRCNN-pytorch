@@ -3,36 +3,49 @@ from torch import nn
 
 
 class FSRCNN(nn.Module):
-    def __init__(self, scale_factor, num_channels=1, d=56, s=12, m=4):
+    def __init__(self, scale_factor=2, num_channels=1, dilate=32, shrink=5):
         super(FSRCNN, self).__init__()
-        self.first_part = nn.Sequential(
-            nn.Conv2d(num_channels, d, kernel_size=5, padding=5//2),
-            nn.PReLU(d)
-        )
-        self.mid_part = [nn.Conv2d(d, s, kernel_size=1), nn.PReLU(s)]
-        for _ in range(m):
-            self.mid_part.extend([nn.Conv2d(s, s, kernel_size=3, padding=3//2), nn.PReLU(s)])
-        self.mid_part.extend([nn.Conv2d(s, d, kernel_size=1), nn.PReLU(d)])
-        self.mid_part = nn.Sequential(*self.mid_part)
-        self.last_part = nn.ConvTranspose2d(d, num_channels, kernel_size=9, stride=scale_factor, padding=9//2,
-                                            output_padding=scale_factor-1)
+        self.conv1 = nn.Conv2d(num_channels, dilate, kernel_size=5, padding=5//2)
+        self.prelu1 = nn.PReLU(dilate)
 
-        self._initialize_weights()
+        self.conv2 = nn.Conv2d(dilate, shrink, kernel_size=1)
+        self.prelu2 = nn.PReLU(shrink)
 
-    def _initialize_weights(self):
-        for m in self.first_part:
-            if isinstance(m, nn.Conv2d):
-                nn.init.normal_(m.weight.data, mean=0.0, std=math.sqrt(2/(m.out_channels*m.weight.data[0][0].numel())))
-                nn.init.zeros_(m.bias.data)
-        for m in self.mid_part:
-            if isinstance(m, nn.Conv2d):
-                nn.init.normal_(m.weight.data, mean=0.0, std=math.sqrt(2/(m.out_channels*m.weight.data[0][0].numel())))
-                nn.init.zeros_(m.bias.data)
-        nn.init.normal_(self.last_part.weight.data, mean=0.0, std=0.001)
-        nn.init.zeros_(self.last_part.bias.data)
+        self.conv3 = nn.Conv2d(shrink, shrink, kernel_size=3, padding=3//2)
+        self.prelu3 = nn.PReLU(shrink)
+
+        self.conv4 = nn.Conv2d(shrink, dilate, kernel_size=1)
+        self.prelu4 = nn.PReLU(dilate)
+
+        self.tconv5 = nn.ConvTranspose2d(dilate, num_channels, kernel_size=9, stride=scale_factor, padding=9//2,
+                                         output_padding=scale_factor-1)
+
+        self.conv_in_acts = []
+        self.conv_out_acts = []
 
     def forward(self, x):
-        x = self.first_part(x)
-        x = self.mid_part(x)
-        x = self.last_part(x)
+        self.conv_in_acts.append(x.data.cpu().numpy()[0])  # 0
+        x = self.conv1(x)
+        self.conv_out_acts.append(x.data.cpu().numpy()[0])
+        x = self.prelu1(x)
+        self.conv_in_acts.append(x.data.cpu().numpy()[0])  # 2
+
+        x = self.conv2(x)
+        self.conv_out_acts.append(x.data.cpu().numpy()[0])
+        x = self.prelu2(x)
+        self.conv_in_acts.append(x.data.cpu().numpy()[0])  # 4
+
+        x = self.conv3(x)
+        self.conv_out_acts.append(x.data.cpu().numpy()[0])
+        x = self.prelu3(x)
+        self.conv_in_acts.append(x.data.cpu().numpy()[0])  # 6
+
+        x = self.conv4(x)
+        self.conv_out_acts.append(x.data.cpu().numpy()[0])
+        x = self.prelu4(x)
+        self.conv_in_acts.append(x.data.cpu().numpy()[0])  # 8
+
+        x = self.tconv5(x)
+        self.conv_out_acts.append(x.data.cpu().numpy()[0])
+
         return x
